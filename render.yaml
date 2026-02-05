@@ -3,3 +3,4 @@ services:
     name: rapports-bva-final
     env: php
     buildCommand: composer install
+    startCommand: apache2-foreground
