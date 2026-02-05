@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: rapports-bva-final
-    env: php
-    plan: free
-    region: frankfurt
-    buildCommand: composer install
-    startCommand: apache2-foreground
