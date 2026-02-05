@@ -1,54 +1,55 @@
-<?php
-require 'vendor/autoload.php';
-use Fpdf\Fpdf; // Assure-toi que fpdf est installé via composer
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Récupération sécurisée des données
-    $immat  = $_POST['immat'] ?? 'N/C';
-    $marque = $_POST['marque'] ?? 'N/C';
-    $modele = $_POST['modele'] ?? 'N/C';
-    $km     = $_POST['km'] ?? '0';
-    $h_recup = $_POST['h_recup'] ?? '0';
-    $h_inj   = $_POST['h_inj'] ?? '0';
-    $p_debut = $_POST['p_debut'] ?? '0';
-    $p_fin   = $_POST['p_fin'] ?? '0';
-
-    $pdf = new FPDF();
-    $pdf->AddPage();
-    
-    // Header
-    $pdf->SetFont('Arial', 'B', 16);
-    $pdf->SetTextColor(200, 0, 0); 
-    $pdf->Cell(0, 15, 'BARDAHL - GARAGE SURANNAIS', 0, 1, 'C');
-    
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', 'RAPPORT D\'INTERVENTION BVA'), 0, 1, 'C');
-    $pdf->Ln(5);
-
-    // Tableau de données
-    $pdf->SetFont('Arial', '', 11);
-    $data = [
-        ['Véhicule', strtoupper($marque) . ' ' . strtoupper($modele)],
-        ['Immatriculation', strtoupper($immat)],
-        ['Kilométrage', number_format($km, 0, '.', ' ') . ' km'],
-        ['Huile récupérée', $h_recup . ' L'],
-        ['Huile injectée', $h_inj . ' L'],
-        ['Pression Début', $p_debut . ' Bars'],
-        ['Pression Fin', $p_fin . ' Bars'],
-    ];
-
-    foreach ($data as $row) {
-        $pdf->SetFillColor(245, 245, 245);
-        $pdf->Cell(80, 10, iconv('UTF-8', 'windows-1252', $row[0]), 1, 0, 'L', true); 
-        $pdf->Cell(110, 10, iconv('UTF-8', 'windows-1252', $row[1]), 1, 1, 'L');
-    }
-
-    $pdf->Ln(20);
-    $pdf->SetFont('Arial', 'I', 10);
-    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "Date de l'intervention : " . date('d/m/Y')), 0, 1);
-    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "Signature et tampon :"), 0, 1);
-
-    $pdf->Output('D', 'Rapport_' . $immat . '.pdf');
-    exit;
-}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Garage Surannais - Rapport BVA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <h2 class="text-danger mb-4">Nouveau Rapport d'Intervention BVA</h2>
+        <form action="process.php" method="POST" class="card p-4 shadow-sm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Immatriculation</label>
+                    <input type="text" name="immat" class="form-control" placeholder="ex: GL-424-RT" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Kilométrage</label>
+                    <input type="text" name="km" class="form-control" placeholder="ex: 149071" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Marque</label>
+                    <input type="text" name="marque" class="form-control" placeholder="ex: VOLKSWAGEN" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Modèle</label>
+                    <input type="text" name="modele" class="form-control" placeholder="ex: GOLF VI" required>
+                </div>
+                <hr>
+                <div class="col-md-6">
+                    <label class="form-label">Huile Récupérée (L)</label>
+                    <input type="text" name="h_recup" class="form-control" placeholder="ex: 10,57 L">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Huile Injectée (L)</label>
+                    <input type="text" name="h_inj" class="form-control" placeholder="ex: 10,22 L">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Pression Début (Bars)</label>
+                    <input type="text" name="p_debut" class="form-control" placeholder="ex: 5,5 Bars">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Pression Fin (Bars)</label>
+                    <input type="text" name="p_fin" class="form-control" placeholder="ex: 5,6 Bars">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Conseils du pro / Remarques</label>
+                    <textarea name="conseils" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-danger mt-4 w-100">Générer le PDF de Rapport</button>
+        </form>
+    </div>
+</body>
+</html>
