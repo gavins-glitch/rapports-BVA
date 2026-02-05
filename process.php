@@ -1,5 +1,5 @@
 <?php
-// Désactive l'affichage des erreurs qui polluent la génération du PDF
+// Désactive les alertes qui bloquent la génération du PDF
 error_reporting(0);
 ini_set('display_errors', 0);
 
@@ -35,14 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
         $p_fin = isset($m_p2[1]) ? trim($m_p2[1]) : "0,0 Bars";
 
         // --- GÉNÉRATION DU PDF ---
-        
-        // Nettoyage de sécurité pour éviter le bug "Some data already output"
+        // On nettoie la mémoire pour éviter les erreurs d'envoi
         if (ob_get_length()) ob_end_clean();
 
         $pdf = new FPDF(); 
         $pdf->AddPage();
         
-        // En-tête
+        // En-tête pro
         $pdf->SetFont('Arial', 'B', 18);
         $pdf->SetTextColor(200, 0, 0); 
         $pdf->Cell(0, 15, 'BARDAHL - GARAGE SURANNAIS', 0, 1, 'C');
@@ -52,9 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
         $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', 'Rapport d\'intervention vidange BVA'), 0, 1, 'C');
         $pdf->Ln(10);
 
-        // Tableau
+        // Tableau de données
         $pdf->SetFont('Arial', '', 11);
-        
         $pdf->Cell(80, 10, iconv('UTF-8', 'windows-1252', 'Véhicule'), 1); 
         $pdf->Cell(110, 10, iconv('UTF-8', 'windows-1252', $vehicule), 1, 1);
         
@@ -65,7 +63,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
         $pdf->Cell(110, 10, $km . ' km', 1, 1);
         
         $pdf->Ln(5);
-        
         $pdf->SetFont('Arial', 'B', 11);
         $pdf->Cell(80, 10, 'Pression Debut', 1); 
-        $pdf->Cell(110, 10, $p_debut,
+        $pdf->Cell(110, 10, $p_debut, 1, 1);
+        
+        $pdf->Cell(80, 10, 'Pression Fin', 1); 
+        $pdf->Cell(110, 10, $p_fin, 1, 1);
+
+        $pdf->Ln(20);
+        $pdf->SetFont('Arial', 'I', 10);
+        $pdf->Cell(0, 10, "Signature / Cachet du garage :", 0, 1);
+
+        // Envoi et téléchargement du fichier
+        $pdf->Output('D', 'Rapport_BVA_' . $immat . '.pdf');
+        exit;
+
+    } catch (Exception $e) {
+        echo "Erreur technique : " . $e->getMessage();
+    }
+}
