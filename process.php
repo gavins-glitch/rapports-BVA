@@ -26,13 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['pdf_file'])) {
         $km = extraire('/Kilométrage\s+([0-9\s]+)/i', $text); [cite: 4]
         
         // Affichage test avant de générer le fichier final
-        echo "<h2>Données extraites avec succès :</h2>";
-        echo "<b>Véhicule :</b> " . $marque . " " . $modele . "<br>";
-        echo "<b>Kilométrage :</b> " . $km . " km<br>";
-        echo "<br><a href='index.php'>Retour</a>";
-
-    } catch (Exception $e) {
-        echo "Erreur lors de la lecture du PDF : " . $e->getMessage();
-    }
-}
+        echo "<body style='background:#1a1a1a;color:white;font-family:sans-serif;padding:20px;'>";
+        echo "<h2>Résultat de l'analyse :</h2>";
+        echo "<ul style='list-style:none;padding:0;line-height:2;'>";
+        echo "<li><strong>Véhicule :</strong> " . $marque . " " . $modele . "</li>";
+        echo "<li><strong>KM :</strong> " . $km . "</li>";
+        echo "<li><strong>Pression Début :</strong> " . $p_debut . " bar</li>";
+        echo "<li><strong>Pression Fin :</strong> " . $p_fin . " bar</li>";
+        echo "</ul>";
+        echo "<br><br><a href='index.php' style='background:#d32f2f;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;'>Nouveau rapport</a>";
+        echo "</body>";
 ?>
