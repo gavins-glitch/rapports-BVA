@@ -1,59 +1,54 @@
 <?php
-// On bloque les erreurs pour ne pas casser le PDF
-ini_set('display_errors', 0);
-error_reporting(E_ALL & ~E_DEPRECATED);
-ob_start(); 
-
 require 'vendor/autoload.php';
-use Smalot\PdfParser\Parser;
+use Fpdf\Fpdf; // Assure-toi que fpdf est installé via composer
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
-    try {
-        $parser = new Parser();
-        $pdfParsed = $parser->parseFile($_FILES['pdf_file']['tmp_name']);
-        
-        // On récupère le texte sous forme de tableau de lignes
-        $rows = explode("\n", $pdfParsed->getText());
-        $cleanRows = array_values(array_filter(array_map('trim', $rows)));
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Récupération sécurisée des données
+    $immat  = $_POST['immat'] ?? 'N/C';
+    $marque = $_POST['marque'] ?? 'N/C';
+    $modele = $_POST['modele'] ?? 'N/C';
+    $km     = $_POST['km'] ?? '0';
+    $h_recup = $_POST['h_recup'] ?? '0';
+    $h_inj   = $_POST['h_inj'] ?? '0';
+    $p_debut = $_POST['p_debut'] ?? '0';
+    $p_fin   = $_POST['p_fin'] ?? '0';
 
-        // Stratégie : On cherche l'index du mot-clé, 
-        // la valeur se trouve X lignes plus bas selon ton copier-coller.
-        function findValue($label, $array, $offset) {
-            foreach ($array as $index => $row) {
-                if (stripos($row, $label) !== false) {
-                    return $array[$index + $offset] ?? "N/C";
-                }
-            }
-            return "N/C";
-        }
+    $pdf = new FPDF();
+    $pdf->AddPage();
+    
+    // Header
+    $pdf->SetFont('Arial', 'B', 16);
+    $pdf->SetTextColor(200, 0, 0); 
+    $pdf->Cell(0, 15, 'BARDAHL - GARAGE SURANNAIS', 0, 1, 'C');
+    
+    $pdf->SetFont('Arial', 'B', 12);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', 'RAPPORT D\'INTERVENTION BVA'), 0, 1, 'C');
+    $pdf->Ln(5);
 
-        // Selon ton copier-coller :
-        // "Immatriculation" est en haut, sa valeur est 4 lignes plus bas.
-        $immat  = findValue('Immatriculation', $cleanRows, 4); [cite: 3]
-        $marque = findValue('Marque', $cleanRows, 4); [cite: 3]
-        $modele = findValue('Modèle', $cleanRows, 4); [cite: 3]
-        $km     = findValue('Kilométrage', $cleanRows, 4); [cite: 3]
+    // Tableau de données
+    $pdf->SetFont('Arial', '', 11);
+    $data = [
+        ['Véhicule', strtoupper($marque) . ' ' . strtoupper($modele)],
+        ['Immatriculation', strtoupper($immat)],
+        ['Kilométrage', number_format($km, 0, '.', ' ') . ' km'],
+        ['Huile récupérée', $h_recup . ' L'],
+        ['Huile injectée', $h_inj . ' L'],
+        ['Pression Début', $p_debut . ' Bars'],
+        ['Pression Fin', $p_fin . ' Bars'],
+    ];
 
-        if (ob_get_length()) ob_clean();
-        
-        $pdf = new FPDF();
-        $pdf->AddPage();
-        $pdf->SetFont('Arial', 'B', 14);
-        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "RAPPORT EXTRAIT"), 0, 1, 'C');
-        $pdf->Ln(10);
-        
-        $pdf->SetFont('Arial', '', 12);
-        $pdf->Cell(50, 10, "Immat :", 1); $pdf->Cell(0, 10, $immat, 1, 1); [cite: 3]
-        $pdf->Cell(50, 10, "Marque :", 1); $pdf->Cell(0, 10, $marque, 1, 1); [cite: 3]
-        $pdf->Cell(50, 10, "Modele :", 1); $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', $modele), 1, 1); [cite: 3]
-        $pdf->Cell(50, 10, "KM :", 1); $pdf->Cell(0, 10, $km, 1, 1); [cite: 3]
-        
-        $pdf->Output('D', 'Rapport_Final.pdf');
-        exit;
-
-    } catch (Exception $e) {
-        ob_end_clean();
-        echo "Erreur : " . $e->getMessage();
+    foreach ($data as $row) {
+        $pdf->SetFillColor(245, 245, 245);
+        $pdf->Cell(80, 10, iconv('UTF-8', 'windows-1252', $row[0]), 1, 0, 'L', true); 
+        $pdf->Cell(110, 10, iconv('UTF-8', 'windows-1252', $row[1]), 1, 1, 'L');
     }
+
+    $pdf->Ln(20);
+    $pdf->SetFont('Arial', 'I', 10);
+    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "Date de l'intervention : " . date('d/m/Y')), 0, 1);
+    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "Signature et tampon :"), 0, 1);
+
+    $pdf->Output('D', 'Rapport_' . $immat . '.pdf');
+    exit;
 }
-?>
