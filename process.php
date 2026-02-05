@@ -1,6 +1,5 @@
 <?php
 require 'vendor/autoload.php';
-
 use Smalot\PdfParser\Parser;
 use Fpdf\Fpdf;
 
@@ -12,42 +11,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
         $pdf = $parser->parseFile($file);
         $text = $pdf->getText();
 
-        // RECHERCHE LARGE (Regex) pour s'adapter au PDF Bardahl
-        // On cherche le kilométrage (souvent près de 'km')
-        preg_match('/(?:Kilométrage|KM|Compteur)\s*[:\.]?\s*(\d+[\s\.]?\d*)/i', $text, $matches_k);
-        $km = isset($matches_k[1]) ? trim($matches_k[1]) . " km" : "À remplir";
+        // 1. EXTRACTION DES DONNÉES (Basée sur ton fichier test.pdf)
+        
+        // Extraction du véhicule (Marque + Modèle)
+        preg_match('/"Marque"\s*,\s*"([^"]+)"/i', $text, $m_marque);
+        preg_match('/"Modèle"\s*,\s*"([^"]+)"/i', $text, $m_modele);
+        $vehicule = (isset($m_marque[1]) ? trim($m_marque[1]) : "") . " " . (isset($m_modele[1]) ? trim($m_modele[1]) : "");
+        $vehicule = !empty(trim($vehicule)) ? $vehicule : "Non trouvé";
 
-        // On cherche les pressions (souvent un chiffre avec une virgule suivi de 'bar')
-        preg_match('/(?:Pression entrée|Début|Initial)\s*[:\.]?\s*([\d,.]+)/i', $text, $matches_pe);
-        $p_debut = isset($matches_pe[1]) ? str_replace('.', ',', $matches_pe[1]) : "0,0";
+        // Extraction Kilométrage
+        preg_match('/"Kilométrage"\s*,\s*"([^"]+)"/i', $text, $m_km);
+        $km = isset($m_km[1]) ? trim($m_km[1]) . " km" : "À vérifier";
 
-        preg_match('/(?:Pression sortie|Fin|Final)\s*[:\.]?\s*([\d,.]+)/i', $text, $matches_ps);
-        $p_fin = isset($matches_ps[1]) ? str_replace('.', ',', $matches_ps[1]) : "0,0";
+        // Extraction Immatriculation
+        preg_match('/"Immatriculation"\s*,\s*"([^"]+)"/i', $text, $m_imm);
+        $immat = isset($m_imm[1]) ? trim($m_imm[1]) : "NC";
 
-        // GÉNÉRATION DU NOUVEAU PDF
+        // Extraction Pressions
+        preg_match('/"Pression début de prestation relevée"\s*,\s*"([^"]+)"/i', $text, $m_p1);
+        $p_debut = isset($m_p1[1]) ? trim($m_p1[1]) : "0,0 Bars";
+
+        preg_match('/"Pression fin de prestation relevée"\s*,\s*"([^"]+)"/i', $text, $m_p2);
+        $p_fin = isset($m_p2[1]) ? trim($m_p2[1]) : "0,0 Bars";
+
+        // 2. GÉNÉRATION DU NOUVEAU PDF PROPRE
         $report = new FPDF();
         $report->AddPage();
-        $report->SetFont('Arial', 'B', 18);
-        $report->Cell(0, 10, 'RAPPORT DE PRESTATION BVA', 0, 1, 'C');
+        
+        // Entête
+        $report->SetFont('Arial', 'B', 16);
+        $report->SetTextColor(211, 47, 47); // Rouge Bardahl
+        $report->Cell(0, 10, 'COMPTE-RENDU DE PRESTATION BVA', 0, 1, 'C');
         $report->Ln(10);
         
-        $report->SetFont('Arial', '', 12);
-        $report->Cell(0, 10, "Kilometrage : " . $km, 0, 1);
-        $report->Ln(5);
-        $report->SetTextColor(200, 0, 0); // Rouge
-        $report->Cell(0, 10, "Pression avant intervention : " . $p_debut . " bar", 0, 1);
-        $report->SetTextColor(0, 150, 0); // Vert
-        $report->Cell(0, 10, "Pression apres intervention : " . $p_fin . " bar", 0, 1);
-        
+        // Infos Véhicule
+        $report->SetFont('Arial', 'B', 12);
         $report->SetTextColor(0, 0, 0);
-        $report->Ln(20);
-        $report->MultiCell(0, 10, "Synthese : La pression a ete retablie de maniere optimale apres le nettoyage complet du circuit.");
+        $report->Cell(0, 10, utf8_decode("VÉHICULE : ") . utf8_decode($vehicule), 0, 1);
+        $report->Cell(0, 10, "IMMATRICULATION : " . $immat, 0, 1);
+        $report->Cell(0, 10, utf8_decode("KILOMÉTRAGE : ") . $km, 0, 1);
+        $report->Ln(5);
+        
+        // Pressions
+        $report->SetFillColor(240, 240, 240);
+        $report->SetFont('Arial', 'B', 14);
+        $report->Cell(0, 12, " RESULTATS DES PRESSIONS", 0, 1, 'L', true);
+        
+        $report->SetFont('Arial', '', 12);
+        $report->Cell(0, 10, " Pression avant intervention : " . $p_debut, 0, 1);
+        $report->SetTextColor(0, 128, 0); // Vert
+        $report->Cell(0, 10, " Pression apres intervention : " . $p_fin, 0, 1);
+        
+        $report->Ln(10);
+        $report->SetTextColor(0, 0, 0);
+        $report->SetFont('Arial', 'I', 10);
+        $report->MultiCell(0, 8, utf8_decode("La prestation a permis d'optimiser les pressions de fonctionnement de votre boîte de vitesses automatique."));
 
-        // Téléchargement automatique du nouveau PDF
-        $report->Output('D', 'Rapport_BVA_Final.pdf');
+        // Sortie : Téléchargement direct
+        $report->Output('D', 'Rapport_BVA_' . $immat . '.pdf');
 
     } catch (Exception $e) {
-        echo "Erreur : " . $e->getMessage();
+        echo "Erreur lors de l'analyse : " . $e->getMessage();
     }
 }
-?>
