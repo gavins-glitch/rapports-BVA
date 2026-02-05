@@ -3,37 +3,43 @@ require 'vendor/autoload.php';
 
 use Smalot\PdfParser\Parser;
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['pdf_file'])) {
-    $parser = new Parser();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
+    $file = $_FILES['pdf_file']['tmp_name'];
     
     try {
-        $pdf = $parser->parseFile($_FILES['pdf_file']['tmp_name']);
+        $parser = new Parser();
+        $pdf = $parser->parseFile($file);
         $text = $pdf->getText();
 
-        // Nettoyage du texte pour éviter les bugs de lecture
-        $text = str_replace("\n", " ", $text);
+        // Extraction des données avec des recherches souples (Regex)
+        preg_match('/Véhicule\s*:\s*(.*)/i', $text, $matches_v);
+        $vehicule = isset($matches_v[1]) ? trim($matches_v[1]) : "Non trouvé";
 
-        // Extraction des données avec des expressions régulières (Regex)
-        function extraire($pattern, $input) {
-            if (preg_match($pattern, $input, $matches)) {
-                return trim($matches[1]);
-            }
-            return "Non détecté";
-        }
+        preg_match('/Kilométrage\s*:\s*(\d+)/i', $text, $matches_k);
+        $km = isset($matches_k[1]) ? $matches_k[1] . " km" : "Non trouvé";
 
-        $marque = extraire('/Marque\s+([^\s]+)/i', $text); [cite: 4]
-        $modele = extraire('/Modèle\s+([^\s]+)/i', $text); [cite: 4]
-        $km = extraire('/Kilométrage\s+([0-9\s]+)/i', $text); [cite: 4]
-        
-        // Affichage test avant de générer le fichier final
-        echo "<body style='background:#1a1a1a;color:white;font-family:sans-serif;padding:20px;'>";
-        echo "<h2>Résultat de l'analyse :</h2>";
-        echo "<ul style='list-style:none;padding:0;line-height:2;'>";
-        echo "<li><strong>Véhicule :</strong> " . $marque . " " . $modele . "</li>";
-        echo "<li><strong>KM :</strong> " . $km . "</li>";
-        echo "<li><strong>Pression Début :</strong> " . $p_debut . " bar</li>";
-        echo "<li><strong>Pression Fin :</strong> " . $p_fin . " bar</li>";
-        echo "</ul>";
-        echo "<br><br><a href='index.php' style='background:#d32f2f;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;'>Nouveau rapport</a>";
-        echo "</body>";
-?>
+        preg_match('/Pression entrée\s*:\s*([\d,.]+)/i', $text, $matches_pe);
+        $p_debut = isset($matches_pe[1]) ? $matches_pe[1] : "0.0";
+
+        preg_match('/Pression sortie\s*:\s*([\d,.]+)/i', $text, $matches_ps);
+        $p_fin = isset($matches_ps[1]) ? $matches_ps[1] : "0.0";
+
+        // Affichage du résultat
+        echo "<!DOCTYPE html>
+        <html lang='fr'>
+        <head>
+            <meta charset='UTF-8'>
+            <title>Résultat Analyse BVA</title>
+        </head>
+        <body style='background:#121212; color:#e0e0e0; font-family:sans-serif; padding:40px; text-align:center;'>
+            <div style='background:#1e1e1e; padding:20px; border-radius:10px; display:inline-block; border:1px solid #333; text-align:left; min-width:300px;'>
+                <h2 style='color:#d32f2f; border-bottom:1px solid #333; padding-bottom:10px;'>Rapport d'Analyse</h2>
+                <p><strong>🚗 Véhicule :</strong> $vehicule</p>
+                <p><strong>🛣️ Kilométrage :</strong> $km</p>
+                <hr style='border:0; border-top:1px solid #333;'>
+                <p><strong>📉 Pression Début :</strong> <span style='color:#ff9800;'>$p_debut bar</span></p>
+                <p><strong>📈 Pression Fin :</strong> <span style='color:#4caf50;'>$p_fin bar</span></p>
+                <br>
+                <a href='index.php' style='display:block; background:#d32f2f; color:white; padding:12px; text-decoration:none; border-radius:5px; text-align:center; font-weight:bold;'>🔄 Analyser un autre fichier</a>
+            </div>
+        </body>
