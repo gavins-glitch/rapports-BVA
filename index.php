@@ -25,7 +25,7 @@
         <p>Sélectionnez le rapport Bardahl :</p>
         <form action="process.php" method="post" enctype="multipart/form-data">
             <input type="file" name="pdf_file" accept=".pdf" required>
-            <button type="submit">Générer Rapport GSW</button>
+            <button type="submit">Générer le rapport</button>
         </form>
     </div>
 </div>
