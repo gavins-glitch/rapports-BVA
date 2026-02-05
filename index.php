@@ -2,40 +2,50 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Garage Surannais - Accès</title>
-    <style>
-        body { background: #121212; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: #1e1e1e; padding: 30px; border-radius: 15px; border: 1px solid #333; text-align: center; width: 320px; }
-        h1 { color: #d32f2f; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #444; background: #252525; color: white; box-sizing: border-box; }
-        button { background: #d32f2f; color: white; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        .hidden { display: none; }
-    </style>
+    <title>Garage Surannais - Nouveau Rapport</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body>
-<div class="container">
-    <h1>Garage Surannais</h1>
-    <div id="login">
-        <p>Code d'accès requis :</p>
-        <input type="password" id="access-code" placeholder="••••">
-        <button onclick="check()">Entrer</button>
-    </div>
-    <div id="upload" class="hidden">
-        <p>Sélectionnez le rapport Bardahl :</p>
-        <form action="process.php" method="post" enctype="multipart/form-data">
-            <input type="file" name="pdf_file" accept=".pdf" required>
-            <button type="submit">Générer le rapport</button>
+<body class="bg-light">
+    <div class="container py-5">
+        <h2 class="text-danger mb-4">Créer un Rapport de Vidange BVA</h2>
+        <form action="process.php" method="POST" class="card p-4 shadow-sm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Immatriculation</label>
+                    <input type="text" name="immat" class="form-control" placeholder="ex: GL-424-RT" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Kilométrage</label>
+                    <input type="number" name="km" class="form-control" placeholder="149071" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Marque</label>
+                    <input type="text" name="marque" class="form-control" placeholder="VOLKSWAGEN" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Modèle</label>
+                    <input type="text" name="modele" class="form-control" placeholder="GOLF VI" required>
+                </div>
+                <hr>
+                <div class="col-md-6">
+                    <label class="form-label">Huile Récupérée (L)</label>
+                    <input type="text" name="h_recup" class="form-control" placeholder="10.57">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Huile Injectée (L)</label>
+                    <input type="text" name="h_inj" class="form-control" placeholder="10.22">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Pression Début (Bars)</label>
+                    <input type="text" name="p_debut" class="form-control" placeholder="5.5">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Pression Fin (Bars)</label>
+                    <input type="text" name="p_fin" class="form-control" placeholder="5.6">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-danger mt-4">Générer le PDF</button>
         </form>
     </div>
-</div>
-<script>
-    function check() {
-        if (document.getElementById('access-code').value.toUpperCase() === 'GSW') {
-            document.getElementById('login').style.display = 'none';
-            document.getElementById('upload').style.display = 'block';
-        } else { alert('Code incorrect'); }
-    }
-</script>
 </body>
 </html>
