@@ -1,4 +1,5 @@
 <?php
+// On bloque les erreurs pour ne pas casser le PDF
 ini_set('display_errors', 0);
 error_reporting(E_ALL & ~E_DEPRECATED);
 ob_start(); 
@@ -10,41 +11,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
     try {
         $parser = new Parser();
         $pdfParsed = $parser->parseFile($_FILES['pdf_file']['tmp_name']);
-        $text = $pdfParsed->getText();
+        
+        // On récupère le texte sous forme de tableau de lignes
+        $rows = explode("\n", $pdfParsed->getText());
+        $cleanRows = array_values(array_filter(array_map('trim', $rows)));
 
-        // On nettoie juste les retours à la ligne pour avoir un bloc de texte continu
-        $text = str_replace(["\n", "\r"], " ", $text);
-        $text = preg_replace('/\s+/', ' ', $text);
-
-        // Cette fonction est beaucoup plus permissive
-        function extractData($label, $fullText) {
-            // On cherche le label, on ignore les symboles éventuels (: , " ) 
-            // et on capture jusqu'au prochain mot qui commence par une majuscule (souvent le label suivant)
-            $pattern = '/' . preg_quote($label, '/') . '[\s" ,:]+([^"|:|,]+)/i';
-            if (preg_match($pattern, $fullText, $m)) {
-                return trim($m[1]);
+        // Stratégie : On cherche l'index du mot-clé, 
+        // la valeur se trouve X lignes plus bas selon ton copier-coller.
+        function findValue($label, $array, $offset) {
+            foreach ($array as $index => $row) {
+                if (stripos($row, $label) !== false) {
+                    return $array[$index + $offset] ?? "N/C";
+                }
             }
-            return "Non trouve";
+            return "N/C";
         }
 
-        $immat   = extractData('Immatriculation', $text);
-        $marque  = extractData('Marque', $text);
-        $modele  = extractData('Modèle', $text);
-        $km      = extractData('Kilométrage', $text);
-        $h_recup = extractData('Huiler récupérée', $text); // Garde la faute Bardahl [cite: 11]
+        // Selon ton copier-coller :
+        // "Immatriculation" est en haut, sa valeur est 4 lignes plus bas.
+        $immat  = findValue('Immatriculation', $cleanRows, 4); [cite: 3]
+        $marque = findValue('Marque', $cleanRows, 4); [cite: 3]
+        $modele = findValue('Modèle', $cleanRows, 4); [cite: 3]
+        $km     = findValue('Kilométrage', $cleanRows, 4); [cite: 3]
 
         if (ob_get_length()) ob_clean();
         
         $pdf = new FPDF();
         $pdf->AddPage();
-        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetFont('Arial', 'B', 14);
+        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "RAPPORT EXTRAIT"), 0, 1, 'C');
+        $pdf->Ln(10);
         
-        // Test d'affichage simple pour vérifier si l'extraction marche
-        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "DEBUG - Immat trouvee : " . $immat), 0, 1);
-        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "Vehicule : " . $marque . " " . $modele), 0, 1);
-        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "KM : " . $km), 0, 1);
+        $pdf->SetFont('Arial', '', 12);
+        $pdf->Cell(50, 10, "Immat :", 1); $pdf->Cell(0, 10, $immat, 1, 1); [cite: 3]
+        $pdf->Cell(50, 10, "Marque :", 1); $pdf->Cell(0, 10, $marque, 1, 1); [cite: 3]
+        $pdf->Cell(50, 10, "Modele :", 1); $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', $modele), 1, 1); [cite: 3]
+        $pdf->Cell(50, 10, "KM :", 1); $pdf->Cell(0, 10, $km, 1, 1); [cite: 3]
         
-        $pdf->Output('D', 'test_debug.pdf');
+        $pdf->Output('D', 'Rapport_Final.pdf');
         exit;
 
     } catch (Exception $e) {
@@ -52,3 +56,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
         echo "Erreur : " . $e->getMessage();
     }
 }
+?>
