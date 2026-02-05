@@ -11,82 +11,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf_file'])) {
         $pdfParsed = $parser->parseFile($file);
         $text = $pdfParsed->getText();
 
-        // Nettoyage : on remplace tout ce qui n'est pas du texte/chiffre par un espace
-        // Cela permet de coller les données aux étiquettes
-        $cleanText = preg_replace('/[^a-zA-Z0-9\s,.\-]/', ' ', $text);
-        $cleanText = preg_replace('/\s+/', ' ', $cleanText);
+        // 1. NETTOYAGE TOTAL : on enlève les sauts de ligne et on réduit les espaces
+        $clean = str_replace(["\n", "\r", "\t"], ' ', $text);
+        $clean = preg_replace('/\s+/', ' ', $clean);
 
-        // --- FONCTION D'EXTRACTION ROBUSTE ---
-        function extraire($cle, $source) {
-            // On cherche le mot clé et on prend les 4-5 mots qui suivent
-            if (preg_match('/' . $cle . '\s+([^,]+)/i', $source, $match)) {
-                return trim($match[1]);
+        // 2. EXTRACTION PAR BLOCS (Méthode la plus fiable pour ton fichier)
+        function getVal($label, $txt) {
+            // Cherche le label, ignore ce qu'il y a entre, et prend la valeur entre guillemets
+            if (preg_match('/' . $label . '\s*"\s*,\s*"\s*([^"]+)/i', $txt, $m)) {
+                return trim($m[1]);
             }
             return "N/C";
         }
 
-        // --- RÉCUPÉRATION DES DONNÉES (Basé sur test.pdf) ---
-        $immat = extraire('Immatriculation', $cleanText);
-        
-        // Pour le véhicule, on combine Marque et Modèle 
-        $marque = extraire('Marque', $cleanText);
-        $modele = extraire('Modèle', $cleanText);
+        $immat = getVal('Immatriculation', $clean);
+        $marque = getVal('Marque', $clean);
+        $modele = getVal('Modèle', $clean);
         $vehicule = ($marque !== "N/C") ? $marque . " " . $modele : "Inconnu";
-
-        $km = extraire('Kilométrage', $cleanText);
-        $h_recup = extraire('Huiler récupérée', $cleanText); // Avec la faute d'orthographe Bardahl 
-        $h_inj = extraire('Huile injectée', $cleanText);
+        $km = getVal('Kilométrage', $clean);
         
-        // Pressions 
-        preg_match('/début de prestation relevée\s+([\d,.]+)/i', $cleanText, $p1);
-        $p_debut = isset($p1[1]) ? $p1[1] . " Bars" : "0,0 Bars";
+        // Données techniques (Volumes et Pressions)
+        $h_recup = getVal('Huiler récupérée', $clean); // Garde la faute Bardahl
+        $h_inj = getVal('Huile injectée', $clean);
+        $p_debut = getVal('Pression début de prestation relevée', $clean);
+        $p_fin = getVal('Pression fin de prestation relevée', $clean);
+        $norme = getVal('Norme d\'huile d\'origine', $clean);
+        $type_h = getVal('Type d\'huile', $clean);
 
-        preg_match('/fin de prestation relevée\s+([\d,.]+)/i', $cleanText, $p2);
-        $p_fin = isset($p2[1]) ? $p2[1] . " Bars" : "0,0 Bars";
-
-        // Infos supplémentaires 
-        $norme = extraire('Norme d h uile d origine', $cleanText);
-        $type_h = extraire('Type d h uile', $cleanText);
-
-        // --- GÉNÉRATION DU PDF FINAL (Format Garage Surannais) ---
+        // 3. GÉNÉRATION DU PDF (Format identique à ton modèle vierge)
         if (ob_get_length()) ob_end_clean();
         $pdf = new FPDF(); 
         $pdf->AddPage();
         
-        // En-tête (Style modele-vierge.pdf) [cite: 19, 21]
         $pdf->SetFont('Arial', 'B', 18);
         $pdf->SetTextColor(200, 0, 0); 
-        $pdf->Cell(0, 12, 'BARDAHL - GARAGE SURANNAIS', 0, 1, 'C');
+        $pdf->Cell(0, 15, 'BARDAHL - GARAGE SURANNAIS', 0, 1, 'C');
+        
         $pdf->SetFont('Arial', '', 12);
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->Cell(0, 8, iconv('UTF-8', 'windows-1252', 'Rapport d\'intervention vidange BVA'), 0, 1, 'C');
-        $pdf->Ln(8);
+        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', 'Rapport d\'intervention vidange BVA'), 0, 1, 'C');
+        $pdf->Ln(5);
 
-        // Tableau complet 
         $pdf->SetFont('Arial', '', 10);
-        $data = [
-            ['Véhicule', $vehicule],
-            ['Immatriculation', $immat],
-            ['Kilométrage', $km . ' km'],
-            ['Huile récupérée', $h_recup],
-            ['Huile injectée', $h_inj],
-            ['Pression début de prestation', $p_debut],
-            ['Pression fin de prestation', $p_fin],
-            ['Norme d\'huile', $norme],
-            ['Type d\'huile', $type_h]
+        $colonnes = [
+            ['Véhicule', $vehicule], ['Immatriculation', $immat], ['Kilométrage', $km . ' km'],
+            ['Huile récupérée', $h_recup], ['Huile injectée', $h_inj],
+            ['Pression début', $p_debut], ['Pression fin', $p_fin],
+            ['Norme d\'huile', $norme], ['Type d\'huile', $type_h]
         ];
 
-        foreach ($data as $row) {
-            $pdf->Cell(85, 9, iconv('UTF-8', 'windows-1252', $row[0]), 1); 
-            $pdf->Cell(105, 9, iconv('UTF-8', 'windows-1252', $row[1]), 1, 1);
+        foreach ($colonnes as $c) {
+            $pdf->Cell(85, 9, iconv('UTF-8', 'windows-1252', $c[0]), 1); 
+            $pdf->Cell(105, 9, iconv('UTF-8', 'windows-1252', $c[1]), 1, 1);
         }
 
-        $pdf->Ln(20);
+        $pdf->Ln(15);
         $pdf->SetFont('Arial', 'I', 10);
-        $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', "Signature / Cachet du garage :"), 0, 1);
+        $pdf->Cell(0, 10, "Signature / Cachet du garage :", 0, 1);
 
-        // Téléchargement avec le nom de la plaque 
-        $pdf->Output('D', 'Rapport_BVA_' . $immat . '.pdf');
+        $pdf->Output('D', 'BVA_' . $immat . '.pdf');
         exit;
     } catch (Exception $e) { echo "Erreur : " . $e->getMessage(); }
 }
