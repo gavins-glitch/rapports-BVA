@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: rapports-bva-final
+    runtime: php
+    buildCommand: composer install
+    startCommand: apache2-foreground
