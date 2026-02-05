@@ -1,79 +1,43 @@
-<?php
-// On désactive l'affichage des erreurs pour éviter de corrompre le fichier PDF
-ini_set('display_errors', 0);
-error_reporting(E_ALL & ~E_DEPRECATED);
-ob_start(); 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Garage Surannais - Rapport Complet BVA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <h2 class="text-danger mb-4">Saisie du Rapport d'Intervention</h2>
+        <form action="process.php" method="POST" class="card p-4 shadow-sm">
+            <h5 class="border-bottom pb-2">Informations Véhicule</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><label class="form-label">Immatriculation</label><input type="text" name="immat" class="form-control" placeholder="GL-424-RT" required></div>
+                <div class="col-md-3"><label class="form-label">Marque</label><input type="text" name="marque" class="form-control" placeholder="VOLKSWAGEN" required></div>
+                <div class="col-md-3"><label class="form-label">Modèle</label><input type="text" name="modele" class="form-control" placeholder="GOLF VI" required></div>
+                <div class="col-md-3"><label class="form-label">Kilométrage</label><input type="text" name="km" class="form-control" placeholder="149071" required></div>
+                <div class="col-md-4"><label class="form-label">Utilisation</label><input type="text" name="utilisation" class="form-control" placeholder="Urbain"></div>
+            </div>
 
-require 'vendor/autoload.php';
+            <h5 class="border-bottom pb-2">Données Techniques Vidange</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><label class="form-label">Huile récupérée (L)</label><input type="text" name="h_recup" class="form-control" placeholder="10,57"></div>
+                <div class="col-md-3"><label class="form-label">Huile injectée (L)</label><input type="text" name="h_inj" class="form-control" placeholder="10,22"></div>
+                <div class="col-md-3"><label class="form-label">Filtre remplacé</label><select name="filtre" class="form-select"><option value="Oui">Oui</option><option value="Non" selected>Non</option></select></div>
+                <div class="col-md-3"><label class="form-label">Quantité Rinçage (L)</label><input type="text" name="rincage" class="form-control" placeholder="0,00"></div>
+                <div class="col-md-3"><label class="form-label">Pression Début (Bars)</label><input type="text" name="p_debut" class="form-control" placeholder="5,5"></div>
+                <div class="col-md-3"><label class="form-label">Pression Fin (Bars)</label><input type="text" name="p_fin" class="form-control" placeholder="5,6"></div>
+                <div class="col-md-3"><label class="form-label">Norme Huile</label><input type="text" name="norme" class="form-control" placeholder="VW G 052 182"></div>
+                <div class="col-md-3"><label class="form-label">Type d'Huile</label><input type="text" name="type_h" class="form-control" placeholder="DCT XTG"></div>
+            </div>
 
-// Test de la classe FPDF : on essaie les deux écritures courantes
-if (class_exists('FPDF')) {
-    $pdf = new FPDF();
-} elseif (class_exists('\FPDF')) {
-    $pdf = new \FPDF();
-} else {
-    ob_end_clean();
-    die("Erreur : La bibliotheque FPDF n'est pas chargee. Verifiez votre fichier composer.json.");
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Récupération des données du formulaire
-    $immat    = $_POST['immat'] ?? 'N/C';
-    $marque   = $_POST['marque'] ?? 'N/C';
-    $modele   = $_POST['modele'] ?? 'N/C';
-    $km       = $_POST['km'] ?? 'N/C';
-    $h_recup  = $_POST['h_recup'] ?? 'N/C';
-    $h_inj    = $_POST['h_inj'] ?? 'N/C';
-    $p_debut  = $_POST['p_debut'] ?? 'N/C';
-    $p_fin    = $_POST['p_fin'] ?? 'N/C';
-    $remarques = $_POST['remarques'] ?? ''; // Renommé selon ta demande
-
-    $pdf->AddPage();
-    
-    // Titre principal
-    $pdf->SetFont('Arial', 'B', 16);
-    $pdf->SetTextColor(200, 0, 0); 
-    $pdf->Cell(0, 15, 'BARDAHL - GARAGE SURANNAIS', 0, 1, 'C');
-    
-    $pdf->SetFont('Arial', 'B', 12);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->Cell(0, 10, iconv('UTF-8', 'windows-1252', 'RAPPORT D\'INTERVENTION VIDANGE BVA'), 0, 1, 'C');
-    $pdf->Ln(5);
-
-    // Tableau des données techniques
-    $pdf->SetFont('Arial', '', 11);
-    $donnees = [
-        ['Vehicule', strtoupper($marque . ' ' . $modele)],
-        ['Immatriculation', strtoupper($immat)],
-        ['Kilometrage', $km],
-        ['Huile recuperee', $h_recup],
-        ['Huile injectee', $h_inj],
-        ['Pression Debut', $p_debut],
-        ['Pression Fin', $p_fin]
-    ];
-
-    foreach ($donnees as $ligne) {
-        $pdf->SetFillColor(245, 245, 245);
-        $pdf->Cell(80, 10, iconv('UTF-8', 'windows-1252', $ligne[0]), 1, 0, 'L', true); 
-        $pdf->Cell(110, 10, iconv('UTF-8', 'windows-1252', $ligne[1]), 1, 1, 'L');
-    }
-
-    // Zone de Remarques (au lieu de Conseils pro)
-    if (!empty($remarques)) {
-        $pdf->Ln(10);
-        $pdf->SetFont('Arial', 'B', 11);
-        $pdf->Cell(0, 10, 'Remarques :', 0, 1);
-        $pdf->SetFont('Arial', '', 10);
-        $pdf->MultiCell(0, 8, iconv('UTF-8', 'windows-1252', $remarques), 1);
-    }
-
-    $pdf->Ln(15);
-    $pdf->SetFont('Arial', 'I', 10);
-    $pdf->Cell(0, 10, "Fait le : " . date('d/m/Y'), 0, 1);
-    $pdf->Cell(0, 10, "Signature et tampon du garage :", 0, 1);
-
-    // Nettoyage du tampon de sortie pour envoyer le PDF proprement
-    if (ob_get_length()) ob_clean();
-    $pdf->Output('D', 'Rapport_BVA_' . str_replace(' ', '_', $immat) . '.pdf');
-    exit;
-}
+            <h5 class="border-bottom pb-2">Remarques</h5>
+            <div class="row g-3">
+                <div class="col-12">
+                    <textarea name="remarques" class="form-control" rows="3" placeholder="Ex: Prochaine vidange conseillée dans 2 ans ou 60 000 km..."></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-danger mt-4 w-100">Générer le Rapport PDF Final</button>
+        </form>
+    </div>
+</body>
+</html>
